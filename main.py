@@ -3,24 +3,26 @@ import time
 import random
 from pygame.locals import *
 
+SLOW_MOTION:bool = False  # this slows the solving to make it look different
+
+# constants
+GRID_SIZE:int = 50
+BORDER_SIZE:int = 20
+
 pygame.init()
 screen = pygame.display.set_mode((640, 480))
 font = pygame.font.Font(pygame.font.get_default_font(), 36)
 
-# constants
-GRID_SIZE = 50
-BORDER_SIZE = 20
-
-# grid and information about the grid, could use oop but why.
-grid = [[0 for _ in range(9)] for _ in range(9)]
-locked = [[False for _ in range(9)] for _ in range(9)]
-possible_lists = [[None for _ in range(9)] for _ in range(9)]
+# grid and information about the grid, could use oop but this works.
+grid:list[list[int]] = [[0 for _ in range(9)] for _ in range(9)]
+locked:list[list[int]] = [[False for _ in range(9)] for _ in range(9)]
+possible_lists:list[list[list[int]]] = [[None for _ in range(9)] for _ in range(9)]
 
 # the cell that is selected by the user
-selected = [0, 0]
+selected:list[int] = [0, 0]
 
 # an example sudoku
-def load_example():
+def load_example() -> list[list[int]]:
     return [[5,3,0,0,7,0,0,0,0],
             [6,0,0,1,9,5,0,0,0],
             [0,9,8,0,0,0,0,6,0],
@@ -32,19 +34,20 @@ def load_example():
             [0,0,0,0,8,0,0,7,9]]
 
 
-def lock_grid(g):
+def lock_grid(g:list[list[int]]) -> list[list[bool]]:
     """
         returns a 2d array with a true where there is a number, and false where there is none
     """
-    l = [[False for i in range(9)] for _ in range(9)]
+    output:list[list[bool]] = [[False for i in range(9)] for _ in range(9)]
     for y in range(9):
         for x in range(9):
             if g[y][x] != 0:
-                l[y][x] = True
+                output[y][x] = True
 
-    return l
+    return output
 
-def check_grid(g):
+
+def check_grid(g:list[list[int]]) -> bool:
     """
         this returns false if there are any errors in the sudoku grid
         eg. the same number is repeated in a row
@@ -59,7 +62,7 @@ def check_grid(g):
 
     # check cols
     for col in range(9):
-        arr = []
+        arr:list[int] = []
         for row in range(9):
             arr.append(g[row][col])
 
@@ -71,11 +74,11 @@ def check_grid(g):
     # check boxes
     for box in range(9):
         # get the coordinates in the top left cell of block
-        x = (box % 3) * 3
-        y = int(box / 3) * 3
+        x:int = (box % 3) * 3
+        y:int = box // 3 * 3
 
         # add each cell of box to an array
-        arr = []
+        arr:list[int] = []
         for x_ in range(3):
             for y_ in range(3):
                 arr.append(g[y + y_][x + x_])
@@ -87,11 +90,11 @@ def check_grid(g):
     return True
 
 
-def possible_moves(g, x, y):
+def possible_moves(g:list[list[int]], x:int, y:int) -> list[int]:
     """
         returns an array of possible numbers that could go in a cordinate (x, y) in the grid g.
     """
-    a = [] 
+    a:list[int] = [] 
     for i in range(1, 10):
         # check each number and use the check grid function to see if it works
         g[y][x] = i
@@ -101,7 +104,7 @@ def possible_moves(g, x, y):
     return a
 
 
-def next_cell():
+def next_cell() -> None:
     """
         moves the selected square to the right, or to the next row
     """
@@ -115,7 +118,7 @@ def next_cell():
         selected[1] = 0
 
 
-def last_cell():
+def last_cell() -> None:
     """
         moves the selected square to the left, or to the last row
     """
@@ -129,7 +132,7 @@ def last_cell():
         selected[1] = 8
 
 
-def draw_grid():
+def draw_grid() -> None:
     """
         This function does all of the drawing to the screen, in the order
             - fill the screen with grey
@@ -164,26 +167,28 @@ def draw_grid():
     for y in range(9):
         for x in range(9):
             # if there is a number in the cell
-            if grid[y][x] != 0:
-                # if it is a locked then make the number blue and load the surface
-                if locked[y][x]:
-                    text_surface = font.render(str(grid[y][x]), True, (0, 0, 255))
-                else:
-                    text_surface = font.render(str(grid[y][x]), True, c)
-                # draw the number, making sure to centre it and draw it in the middle of the square
-                x_ = (x + 0.5) * GRID_SIZE + BORDER_SIZE - text_surface.get_rect().width / 2
-                y_ = (y + 0.5) * GRID_SIZE + BORDER_SIZE - text_surface.get_rect().height / 2
-                
-                screen.blit(text_surface, (x_, y_))
+            if grid[y][x] == 0:
+                continue
+
+            # if it is a locked then make the number blue and load the surface
+            if locked[y][x]:
+                text_surface = font.render(str(grid[y][x]), True, (0, 0, 255))
+            else:
+                text_surface = font.render(str(grid[y][x]), True, c)
+
+            # draw the number, making sure to centre it and draw it in the middle of the square
+            x_ = (x + 0.5) * GRID_SIZE + BORDER_SIZE - text_surface.get_rect().width / 2
+            y_ = (y + 0.5) * GRID_SIZE + BORDER_SIZE - text_surface.get_rect().height / 2
+            
+            screen.blit(text_surface, (x_, y_))
 
     # end of the function, now render
     pygame.display.flip()
 
 
-
 # keeps state of the game
-running = True
-solving = False
+running:bool = True
+solving:bool = False
 
 while running:
     for event in pygame.event.get():
@@ -198,98 +203,106 @@ while running:
                 selected = [y, x]
 
         elif event.type == pygame.KEYDOWN:
-            if not solving:
-                if not locked[selected[0]][selected[1]]:
-                    if event.key == pygame.K_1:
-                        grid[selected[0]][selected[1]] = 1
-                        next_cell()
-                    elif event.key == pygame.K_2:
-                        grid[selected[0]][selected[1]] = 2
-                        next_cell()
-                    elif event.key == pygame.K_3:
-                        grid[selected[0]][selected[1]] = 3
-                        next_cell()
-                    elif event.key == pygame.K_4:
-                        grid[selected[0]][selected[1]] = 4
-                        next_cell()
-                    elif event.key == pygame.K_5:
-                        grid[selected[0]][selected[1]] = 5
-                        next_cell()
-                    elif event.key == pygame.K_6:
-                        grid[selected[0]][selected[1]] = 6
-                        next_cell()
-                    elif event.key == pygame.K_7:
-                        grid[selected[0]][selected[1]] = 7
-                        next_cell()
-                    elif event.key == pygame.K_8:
-                        grid[selected[0]][selected[1]] = 8
-                        next_cell()
-                    elif event.key == pygame.K_9:
-                        grid[selected[0]][selected[1]] = 9
-                        next_cell()
-                    elif event.key in [pygame.K_0, pygame.K_BACKSPACE]:
-                        grid[selected[0]][selected[1]] = 0
-                        next_cell()
-                    
-                if event.key in [pygame.K_w, pygame.K_UP]:
-                    if selected[0] != 0:
-                        selected[0] -= 1
-                elif event.key in [pygame.K_a, pygame.K_LEFT]:
-                    last_cell()
-                elif event.key in [pygame.K_s, pygame.K_DOWN]:
-                    if selected[0] != 8:
-                        selected[0] += 1
-                elif event.key in [pygame.K_d, pygame.K_RIGHT]:
-                    next_cell()
+            if solving:
+                continue
 
-                elif event.key == pygame.K_l:
-                    grid = load_example()
-                    locked = lock_grid(grid)
-                elif event.key == pygame.K_c:
-                    print(check_grid(grid))
-                elif event.key in [pygame.K_q, pygame.K_RETURN]:
-                    locked = lock_grid(grid)
-                    selected = [0, 0]
-                    solving = True
-    
-    # if it is solving then make one move per frame
-    if solving:
-        # move the selected cell forwards until it reaches an empty cell
-        while locked[selected[0]][selected[1]]:
-            next_cell()
-            # if its the last cell
-            if selected == [8, 8]:
-                print("done")
-                solving = False
-                break
-
-        l = possible_lists[selected[0]][selected[1]]
-        if l == None:
-            l = possible_moves(grid, selected[1], selected[0])
-
-        if len(l) != 0:
-            choice = random.choice(l)
-            l.remove(choice)
-            possible_lists[selected[0]][selected[1]] = l
-            
-            #time.sleep(0.1)
-            grid[selected[0]][selected[1]] = choice
-            
-            if selected == [8, 8]:
-                print("done")
-                solving = False
-                
-            next_cell()
-        else:
-            grid[selected[0]][selected[1]] = 0
-            possible_lists[selected[0]][selected[1]] = None
-            last_cell()
-            while locked[selected[0]][selected[1]]:
+            if event.key in [pygame.K_w, pygame.K_UP]:
+                if selected[0] != 0:
+                    selected[0] -= 1
+            elif event.key in [pygame.K_a, pygame.K_LEFT]:
                 last_cell()
+            elif event.key in [pygame.K_s, pygame.K_DOWN]:
+                if selected[0] != 8:
+                    selected[0] += 1
+            elif event.key in [pygame.K_d, pygame.K_RIGHT]:
+                next_cell()
 
-    
+            elif event.key == pygame.K_l:
+                grid = load_example()
+                locked = lock_grid(grid)
+            elif event.key == pygame.K_c:
+                print(check_grid(grid))
+            elif event.key in [pygame.K_q, pygame.K_RETURN]:
+                locked = lock_grid(grid)
+                selected = [0, 0]
+                solving = True
+
+
+            if locked[selected[0]][selected[1]]:
+                continue
+
+            if event.key == pygame.K_1:
+                grid[selected[0]][selected[1]] = 1
+                next_cell()
+            elif event.key == pygame.K_2:
+                grid[selected[0]][selected[1]] = 2
+                next_cell()
+            elif event.key == pygame.K_3:
+                grid[selected[0]][selected[1]] = 3
+                next_cell()
+            elif event.key == pygame.K_4:
+                grid[selected[0]][selected[1]] = 4
+                next_cell()
+            elif event.key == pygame.K_5:
+                grid[selected[0]][selected[1]] = 5
+                next_cell()
+            elif event.key == pygame.K_6:
+                grid[selected[0]][selected[1]] = 6
+                next_cell()
+            elif event.key == pygame.K_7:
+                grid[selected[0]][selected[1]] = 7
+                next_cell()
+            elif event.key == pygame.K_8:
+                grid[selected[0]][selected[1]] = 8
+                next_cell()
+            elif event.key == pygame.K_9:
+                grid[selected[0]][selected[1]] = 9
+                next_cell()
+            elif event.key in [pygame.K_0, pygame.K_BACKSPACE]:
+                grid[selected[0]][selected[1]] = 0
+                next_cell()
+                
             
     draw_grid()
     
+    # if it is solving then make one move per frame
+    if not solving:
+        continue
+
+    if SLOW_MOTION:
+        time.sleep(0.1)
+
+    # move the selected cell forwards until it reaches an empty cell
+    while locked[selected[0]][selected[1]]:
+        next_cell()
+        # if its the last cell
+        if selected == [8, 8]:
+            print("done")
+            solving = False
+            break
+
+    l = possible_lists[selected[0]][selected[1]]
+    if l == None:
+        l = possible_moves(grid, selected[1], selected[0])
+
+    if len(l) != 0:
+        choice = random.choice(l)
+        l.remove(choice)
+        possible_lists[selected[0]][selected[1]] = l
+        
+        grid[selected[0]][selected[1]] = choice
+        
+        if selected == [8, 8]:
+            print("done")
+            solving = False
+        next_cell()
+
+    else:
+        grid[selected[0]][selected[1]] = 0
+        possible_lists[selected[0]][selected[1]] = None
+        last_cell()
+        while locked[selected[0]][selected[1]]:
+            last_cell()
+
 
 pygame.quit()
